@@ -1,5 +1,7 @@
 const Job = require("../models/Job");
 const User = require("../models/User");
+const JOB_STATUS_FLOW = require("../constants/jobStatusFlow");
+
 
 // ADMIN: Create new job
 exports.createJob = async (req, res) => {
@@ -85,7 +87,7 @@ exports.getAllJobsAdmin = async (req, res) => {
   };
   
   // WORKER: Update job progress (restricted)
-exports.updateJobByWorker = async (req, res) => {
+  exports.updateJobByWorker = async (req, res) => {
     try {
       const { id } = req.params;
       const { status, measurements } = req.body;
@@ -96,27 +98,41 @@ exports.updateJobByWorker = async (req, res) => {
       }
   
       // Ensure job is assigned to this worker
-      if (!job.assignedWorker || job.assignedWorker.toString() !== req.user.id) {
+      if (
+        !job.assignedWorker ||
+        job.assignedWorker.toString() !== req.user.id
+      ) {
         return res.status(403).json({ message: "Not authorized for this job" });
       }
   
-      // Allowed status transitions for workers
-      const allowedStatuses = [
-        "GRINDING",
-        "SANDBLASTING",
-        "COATING",
-        "BONDING",
-        "FINISHING",
-        "INSPECTION",
-      ];
-  
-      if (status && !allowedStatuses.includes(status)) {
-        return res.status(400).json({ message: "Invalid status update" });
+      // 🔒 LOCK AFTER INSPECTION OR DISPATCH
+      if (job.status === "INSPECTION" || job.status === "DISPATCHED") {
+        return res.status(403).json({
+          message: "Job is locked after inspection",
+        });
       }
   
-      if (status) job.status = status;
+      // 🔢 ENFORCE WORKFLOW ORDER
+      if (status) {
+        const currentIndex = JOB_STATUS_FLOW.indexOf(job.status);
+        const nextIndex = JOB_STATUS_FLOW.indexOf(status);
   
-      // Workers can update measurements only
+        if (nextIndex === -1) {
+          return res.status(400).json({
+            message: "Invalid job status",
+          });
+        }
+  
+        if (nextIndex !== currentIndex + 1) {
+          return res.status(403).json({
+            message: "You must follow the job workflow order",
+          });
+        }
+  
+        job.status = status;
+      }
+  
+      // 📏 UPDATE MEASUREMENTS (NO PHASE LOCKING YET)
       if (measurements) {
         job.measurements = {
           ...job.measurements,
@@ -134,7 +150,7 @@ exports.updateJobByWorker = async (req, res) => {
       res.status(500).json({ message: error.message });
     }
   };
-
+  
   // ADMIN: Assign worker to job
   exports.assignWorkerToJob = async (req, res) => {
     try {
