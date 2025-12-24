@@ -2,7 +2,6 @@ const mongoose = require("mongoose");
 
 const jobSchema = new mongoose.Schema(
   {
-    // BASIC IDENTIFIERS
     jobNumber: {
       type: String,
       required: true,
@@ -32,10 +31,8 @@ const jobSchema = new mongoose.Schema(
       required: true,
     },
 
-    // MEASUREMENTS (ALL IN MM / KG WHERE APPLICABLE)
     measurements: {
       jobLength: Number,
-
       jobOldOd: Number,
       jobMsOd: Number,
       requiredOd: Number,
@@ -47,31 +44,16 @@ const jobSchema = new mongoose.Schema(
       msWeight: Number,
     },
 
-    // PROCESS FLAGS & APPROVALS
-    approvals: {
-      coatingApproved: {
-        type: Boolean,
-        default: false,
-      },
-      msBondingApproved: {
-        type: Boolean,
-        default: false,
-      },
-      inspectionPassed: {
-        type: Boolean,
-        default: false,
-      },
-    },
-
-    // STATUS TRACKING
     status: {
       type: String,
       enum: [
         "RECEIVED",
         "GRINDING",
         "SANDBLASTING",
+        "AWAITING_ADMIN_APPROVAL_FOR_COATING",
         "COATING",
         "BONDING",
+        "AWAITING_ADMIN_APPROVAL_FOR_RUBBER",
         "FINISHING",
         "INSPECTION",
         "DISPATCHED",
@@ -79,19 +61,23 @@ const jobSchema = new mongoose.Schema(
       default: "RECEIVED",
     },
 
-    // WORKER ASSIGNMENT
+    waitingForApproval: {
+      type: Boolean,
+      default: false,
+    },
+
+    lastApprovedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+
     assignedWorker: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
 
-    // 🔒 ADMIN-ONLY FIELDS
-    companyName: {
-      type: String,
-    },
-    price: {
-      type: Number,
-    },
+    companyName: String,
+    price: Number,
   },
   { timestamps: true }
 );
