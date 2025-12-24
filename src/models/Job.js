@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 
 const jobSchema = new mongoose.Schema(
   {
+    // BASIC IDENTIFIERS
     jobNumber: {
       type: String,
       required: true,
@@ -31,29 +32,43 @@ const jobSchema = new mongoose.Schema(
       required: true,
     },
 
+    // MEASUREMENTS
     measurements: {
       jobLength: Number,
       jobOldOd: Number,
       jobMsOd: Number,
       requiredOd: Number,
       finishOd: Number,
-
       eboniteOd: Number,
       roughOd: Number,
-
       msWeight: Number,
     },
 
+    // ✅ ADMIN APPROVAL FLAGS (THIS IS PHASE 3)
+    approvals: {
+      coatingApproved: {
+        type: Boolean,
+        default: false,
+      },
+      msBondingApproved: {
+        type: Boolean,
+        default: false,
+      },
+      inspectionPassed: {
+        type: Boolean,
+        default: false,
+      },
+    },
+
+    // ✅ STATUS FLOW (NO WAITING STATUSES HERE)
     status: {
       type: String,
       enum: [
         "RECEIVED",
         "GRINDING",
         "SANDBLASTING",
-        "AWAITING_ADMIN_APPROVAL_FOR_COATING",
         "COATING",
         "BONDING",
-        "AWAITING_ADMIN_APPROVAL_FOR_RUBBER",
         "FINISHING",
         "INSPECTION",
         "DISPATCHED",
@@ -61,21 +76,12 @@ const jobSchema = new mongoose.Schema(
       default: "RECEIVED",
     },
 
-    waitingForApproval: {
-      type: Boolean,
-      default: false,
-    },
-
-    lastApprovedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    },
-
     assignedWorker: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
 
+    // ADMIN-ONLY DATA
     companyName: String,
     price: Number,
   },

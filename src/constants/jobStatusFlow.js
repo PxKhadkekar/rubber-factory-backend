@@ -6,7 +6,6 @@ const JOB_STATUS_FLOW = [
     "RECEIVED",
     "GRINDING",
     "SANDBLASTING",
-    "AWAITING_ADMIN_APPROVAL",
     "COATING",
     "BONDING",
     "FINISHING",
