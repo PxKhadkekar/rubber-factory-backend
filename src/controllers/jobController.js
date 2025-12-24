@@ -1,6 +1,7 @@
 const Job = require("../models/Job");
 const User = require("../models/User");
 const JOB_STATUS_FLOW = require("../constants/jobStatusFlow");
+const MEASUREMENT_RULES = require("../constants/measurementRules");
 
 
 // ADMIN: Create new job
@@ -132,13 +133,27 @@ exports.getAllJobsAdmin = async (req, res) => {
         job.status = status;
       }
   
-      // 📏 UPDATE MEASUREMENTS (NO PHASE LOCKING YET)
       if (measurements) {
+        const allowedFields =
+          MEASUREMENT_RULES[job.status] || [];
+      
+        const invalidFields = Object.keys(measurements).filter(
+          (field) => !allowedFields.includes(field)
+        );
+      
+        if (invalidFields.length > 0) {
+          return res.status(403).json({
+            message: `Cannot update measurements in ${job.status} phase`,
+            invalidFields,
+          });
+        }
+      
         job.measurements = {
           ...job.measurements,
           ...measurements,
         };
       }
+      
   
       await job.save();
   
