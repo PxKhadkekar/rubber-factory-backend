@@ -8,6 +8,7 @@ const {
   getMyJobsWorker,
   updateJobByWorker,
   assignWorkerToJob,
+  approveJob,
 } = require("../controllers/jobController");
 
 const router = express.Router();
@@ -18,7 +19,7 @@ const router = express.Router();
 |--------------------------------------------------------------------------
 */
 
-// Create new job
+// Create job
 router.post(
   "/",
   authMiddleware,
@@ -26,7 +27,7 @@ router.post(
   createJob
 );
 
-// Get all jobs (admin view)
+// Get all jobs
 router.get(
   "/",
   authMiddleware,
@@ -34,7 +35,15 @@ router.get(
   getAllJobsAdmin
 );
 
-// Assign worker to job
+// Approve job (MUST be before "/:id")
+router.patch(
+  "/:id/approve",
+  authMiddleware,
+  roleMiddleware("ADMIN"),
+  approveJob
+);
+
+// Assign worker
 router.patch(
   "/:id/assign",
   authMiddleware,
@@ -48,7 +57,7 @@ router.patch(
 |--------------------------------------------------------------------------
 */
 
-// Get jobs assigned to logged-in worker
+// Get worker jobs
 router.get(
   "/my",
   authMiddleware,
@@ -56,7 +65,7 @@ router.get(
   getMyJobsWorker
 );
 
-// Update job status / measurements by worker
+// Update job by worker
 router.patch(
   "/:id",
   authMiddleware,

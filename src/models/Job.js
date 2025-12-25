@@ -64,6 +64,7 @@ const jobSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: [
+        "AWAITING_ADMIN_APPROVAL",
         "RECEIVED",
         "GRINDING",
         "SANDBLASTING",
