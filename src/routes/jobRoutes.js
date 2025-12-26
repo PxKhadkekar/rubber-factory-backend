@@ -35,7 +35,7 @@ router.get(
   getAllJobsAdmin
 );
 
-// Approve job (MUST be before "/:id")
+// ✅ Approve job (IMPORTANT: before "/:id")
 router.patch(
   "/:id/approve",
   authMiddleware,
@@ -57,7 +57,7 @@ router.patch(
 |--------------------------------------------------------------------------
 */
 
-// Get worker jobs
+// Get jobs for logged-in worker
 router.get(
   "/my",
   authMiddleware,
