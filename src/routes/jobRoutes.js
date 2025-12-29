@@ -9,6 +9,7 @@ const {
   updateJobByWorker,
   assignWorkerToJob,
   approveJob,
+  getJobById,
 } = require("../controllers/jobController");
 
 const router = express.Router();
@@ -34,6 +35,14 @@ router.get(
   roleMiddleware("ADMIN"),
   getAllJobsAdmin
 );
+
+// Get single job by ID (ADMIN + WORKER)
+router.get(
+  "/:id",
+  authMiddleware,
+  getJobById
+);
+
 
 // ✅ Approve job (IMPORTANT: before "/:id")
 router.patch(

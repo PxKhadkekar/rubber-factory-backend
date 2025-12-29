@@ -127,3 +127,31 @@ exports.updateJobByWorker = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+
+// Get single job by ID (ADMIN + WORKER)
+exports.getJobById = async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id).populate(
+      "assignedWorker",
+      "name email"
+    );
+
+    if (!job) {
+      return res.status(404).json({ message: "Job not found" });
+    }
+
+    // 🔐 Worker can only see assigned job
+    if (req.user.role === "WORKER") {
+      if (!job.assignedWorker || job.assignedWorker._id.toString() !== req.user.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    }
+
+    // 🔓 Admin can see any job
+    return res.json(job);
+  } catch (error) {
+    console.error("GET JOB BY ID ERROR:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
