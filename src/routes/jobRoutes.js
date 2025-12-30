@@ -20,7 +20,7 @@ const router = express.Router();
 |--------------------------------------------------------------------------
 */
 
-// Create job
+// Create job (ADMIN)
 router.post(
   "/",
   authMiddleware,
@@ -28,7 +28,7 @@ router.post(
   createJob
 );
 
-// Get all jobs
+// Get all jobs (ADMIN)
 router.get(
   "/",
   authMiddleware,
@@ -36,15 +36,7 @@ router.get(
   getAllJobsAdmin
 );
 
-// Get single job by ID (ADMIN + WORKER)
-router.get(
-  "/:id",
-  authMiddleware,
-  getJobById
-);
-
-
-// ✅ Approve job (IMPORTANT: before "/:id")
+// Approve job (ADMIN) — MUST be before "/:id"
 router.patch(
   "/:id/approve",
   authMiddleware,
@@ -52,7 +44,7 @@ router.patch(
   approveJob
 );
 
-// Assign worker
+// Assign worker (ADMIN)
 router.patch(
   "/:id/assign",
   authMiddleware,
@@ -62,11 +54,11 @@ router.patch(
 
 /*
 |--------------------------------------------------------------------------
-| WORKER ROUTES
+| WORKER ROUTES (⚠️ SPECIFIC FIRST)
 |--------------------------------------------------------------------------
 */
 
-// Get jobs for logged-in worker
+// ✅ THIS MUST COME BEFORE "/:id"
 router.get(
   "/my",
   authMiddleware,
@@ -80,6 +72,19 @@ router.patch(
   authMiddleware,
   roleMiddleware("WORKER"),
   updateJobByWorker
+);
+
+/*
+|--------------------------------------------------------------------------
+| SHARED / GENERIC ROUTES (⚠️ ALWAYS LAST)
+|--------------------------------------------------------------------------
+*/
+
+// Get single job by ID (ADMIN + WORKER)
+router.get(
+  "/:id",
+  authMiddleware,
+  getJobById
 );
 
 module.exports = router;

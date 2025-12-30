@@ -99,12 +99,16 @@ exports.assignWorkerToJob = async (req, res) => {
 // Get jobs for logged-in worker
 exports.getMyJobsWorker = async (req, res) => {
   try {
+    console.log("REQ.USER:", req.user);
+
     const jobs = await Job.find({ assignedWorker: req.user.id });
     return res.json(jobs);
   } catch (error) {
+    console.error("GET MY JOBS ERROR:", error);
     return res.status(500).json({ message: "Server error" });
   }
 };
+
 
 // Update job by worker
 exports.updateJobByWorker = async (req, res) => {
