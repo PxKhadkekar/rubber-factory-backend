@@ -58,7 +58,32 @@ const jobSchema = new mongoose.Schema(
         type: Boolean,
         default: false,
       },
-    },
+    },auditLogs: [
+      {
+        action: {
+          type: String,
+          required: true,
+        },
+        fromStatus: String,
+        toStatus: String,
+        changedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          required: true,
+        },
+        role: {
+          type: String,
+          enum: ["ADMIN", "WORKER"],
+          required: true,
+        },
+        metadata: Object,
+        timestamp: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
+    
 
     // ✅ STATUS FLOW (NO WAITING STATUSES HERE)
     status: {
