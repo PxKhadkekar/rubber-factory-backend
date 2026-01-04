@@ -8,6 +8,8 @@ const testRoutes = require("./routes/testRoutes");
 const roleTestRoutes = require("./routes/roleTestRoutes");
 const jobRoutes = require("./routes/jobRoutes");
 const userRoutes = require("./routes/userRoutes");
+const auditLogRoutes = require("./routes/auditLogRoutes");
+
 
 dotenv.config();
 connectDB();
@@ -45,6 +47,7 @@ app.use("/api/test", testRoutes);
 app.use("/api/role-test", roleTestRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api", auditLogRoutes);
 
 /* ================================
    HEALTH CHECK
