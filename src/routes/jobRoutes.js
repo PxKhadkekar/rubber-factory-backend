@@ -5,6 +5,7 @@ const roleMiddleware = require("../middleware/role");
 const {
   createJob,
   getAllJobsAdmin,
+  getAnalytics,
   getMyJobsWorker,
   updateJobByWorker,
   assignWorkerToJob,
@@ -19,6 +20,14 @@ const router = express.Router();
 | ADMIN ROUTES
 |--------------------------------------------------------------------------
 */
+
+// Analytics Dashboard (ADMIN) — MUST be before /:id
+router.get(
+  "/analytics",
+  authMiddleware,
+  roleMiddleware("ADMIN"),
+  getAnalytics
+);
 
 // Create job (ADMIN)
 router.post(

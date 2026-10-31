@@ -25,6 +25,9 @@ exports.createJob = async (req, res) => {
       ],
     });
 
+    const io = req.app.get("io");
+    if (io) io.emit("jobCreated", job);
+
     return res.status(201).json({
       success: true,
       job,
@@ -41,8 +44,36 @@ exports.createJob = async (req, res) => {
 // Get all jobs (ADMIN)
 exports.getAllJobsAdmin = async (req, res) => {
   try {
-    const jobs = await Job.find().populate("assignedWorker", "name email");
-    return res.json(jobs);
+    const { page = 1, limit = 10, status, search } = req.query;
+    const query = {};
+
+    if (status) query.status = status;
+    if (search) {
+      query.$or = [
+        { jobNumber: { $regex: search, $options: "i" } },
+        { companyName: { $regex: search, $options: "i" } },
+        { vehicleNumber: { $regex: search, $options: "i" } }
+      ];
+    }
+
+    const pageNumber = parseInt(page, 10);
+    const limitNumber = parseInt(limit, 10);
+    const skip = (pageNumber - 1) * limitNumber;
+
+    const jobs = await Job.find(query)
+      .populate("assignedWorker", "name email")
+      .skip(skip)
+      .limit(limitNumber)
+      .sort({ createdAt: -1 });
+
+    const total = await Job.countDocuments(query);
+
+    return res.json({
+      jobs,
+      total,
+      page: pageNumber,
+      pages: Math.ceil(total / limitNumber),
+    });
   } catch (error) {
     return res.status(500).json({ message: "Server error" });
   }
@@ -75,6 +106,9 @@ exports.approveJob = async (req, res) => {
     // Start worker flow
     job.status = "RECEIVED";
     await job.save();
+
+    const io = req.app.get("io");
+    if (io) io.emit("jobApproved", job);
 
     return res.status(200).json({
       message: "Job approved",
@@ -110,6 +144,10 @@ exports.assignWorkerToJob = async (req, res) => {
     });
 
     await job.save();
+
+    const io = req.app.get("io");
+    if (io) io.emit("jobAssigned", { job, workerId });
+
     return res.json(job);
   } catch (error) {
     return res.status(500).json({ message: "Server error" });
@@ -125,8 +163,35 @@ exports.assignWorkerToJob = async (req, res) => {
 // Get jobs for logged-in worker
 exports.getMyJobsWorker = async (req, res) => {
   try {
-    const jobs = await Job.find({ assignedWorker: req.user.id });
-    return res.json(jobs);
+    const { page = 1, limit = 10, status, search } = req.query;
+    const query = { assignedWorker: req.user.id };
+
+    if (status) query.status = status;
+    if (search) {
+      query.$or = [
+        { jobNumber: { $regex: search, $options: "i" } },
+        { companyName: { $regex: search, $options: "i" } },
+        { vehicleNumber: { $regex: search, $options: "i" } }
+      ];
+    }
+
+    const pageNumber = parseInt(page, 10);
+    const limitNumber = parseInt(limit, 10);
+    const skip = (pageNumber - 1) * limitNumber;
+
+    const jobs = await Job.find(query)
+      .skip(skip)
+      .limit(limitNumber)
+      .sort({ createdAt: -1 });
+
+    const total = await Job.countDocuments(query);
+
+    return res.json({
+      jobs,
+      total,
+      page: pageNumber,
+      pages: Math.ceil(total / limitNumber),
+    });
   } catch (error) {
     console.error("GET MY JOBS ERROR:", error);
     return res.status(500).json({ message: "Server error" });
@@ -174,6 +239,10 @@ exports.updateJobByWorker = async (req, res) => {
     }
 
     await job.save();
+
+    const io = req.app.get("io");
+    if (io) io.emit("jobUpdated", job);
+
     return res.json(job);
   } catch (error) {
     return res.status(500).json({ message: "Server error" });
@@ -207,5 +276,88 @@ exports.getJobById = async (req, res) => {
   } catch (error) {
     console.error("GET JOB BY ID ERROR:", error);
     return res.status(500).json({ message: "Server error" });
+  }
+};
+
+/*
+|--------------------------------------------------------------------------
+| ANALYTICS (ADMIN)
+|--------------------------------------------------------------------------
+*/
+
+exports.getAnalytics = async (req, res) => {
+  try {
+    // 1. Jobs Per Day (last 30 days ideally, but we'll do all for simplicity)
+    const jobsPerDay = await Job.aggregate([
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+      { $project: { date: "$_id", count: 1, _id: 0 } },
+    ]);
+
+    // 2. Stage Bottlenecks
+    // We count active jobs per status
+    const stageBottlenecks = await Job.aggregate([
+      {
+        $match: { status: { $ne: "DISPATCHED" } }, // Ignore completed
+      },
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 },
+        },
+      },
+      { $project: { stage: "$_id", count: 1, _id: 0 } },
+    ]);
+
+    // 3. Worker Efficiency
+    const workerEfficiency = await Job.aggregate([
+      {
+        $match: { assignedWorker: { $exists: true, $ne: null } }
+      },
+      {
+        $group: {
+          _id: "$assignedWorker",
+          completed: {
+            $sum: { $cond: [{ $eq: ["$status", "DISPATCHED"] }, 1, 0] }
+          },
+          active: {
+            $sum: { $cond: [{ $ne: ["$status", "DISPATCHED"] }, 1, 0] }
+          }
+        }
+      },
+      {
+        $lookup: {
+          from: "users", // the collection name for User model
+          localField: "_id",
+          foreignField: "_id",
+          as: "workerData"
+        }
+      },
+      {
+        $unwind: "$workerData"
+      },
+      {
+        $project: {
+          workerName: "$workerData.name",
+          completed: 1,
+          active: 1,
+          _id: 0
+        }
+      }
+    ]);
+
+    res.json({
+      jobsPerDay,
+      stageBottlenecks,
+      workerEfficiency,
+    });
+  } catch (error) {
+    console.error("ANALYTICS ERROR:", error);
+    res.status(500).json({ message: "Server error calculating analytics" });
   }
 };
